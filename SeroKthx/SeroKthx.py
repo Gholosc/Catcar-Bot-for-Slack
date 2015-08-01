@@ -76,6 +76,9 @@ def defineWord(message, channel, prefixLength, isAll=False):
     try: 
         word = str(message)[prefixLength:].strip()
         defn = getDictDefnResponse(word, isAll)
+
+        defn += '\n\n_Definitions were fetched using the API for the Merriam-Webster\'s Collegiate Dictionary_ '
+        defn += 'http://goo.gl/J9BwCd'
         sc.rtm_send_message(channel, defn)
     except: 
         sc.rtm_send_message(channel, "Problem finding definition. \n")
