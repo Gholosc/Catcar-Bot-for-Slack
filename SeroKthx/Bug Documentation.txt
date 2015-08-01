@@ -1,0 +1,7 @@
+#1:
+Two clashing responses.
+if 'sero': say 'IS AWESOME'
+if 'define:'word: say definition of word
+
+It will crash if the user says 'define:sero', as the bot will give a reply containing the word 'sero'. The reply
+does not have a u'channel' key, and so it crashes.
