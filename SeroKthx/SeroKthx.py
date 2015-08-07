@@ -85,6 +85,7 @@ def defineWord(message, channel, prefixLength, isAll=False):
 
 sc = SlackClient(TOKEN)
 if sc.rtm_connect():
+    hi_count = 0
     while True:
         feed = sc.rtm_read()
        
@@ -94,7 +95,7 @@ if sc.rtm_connect():
             newMsgs = [new for new in feed if u'text' in new]
             if newMsgs != []:
                 for msg in newMsgs:
-                    if u'reply_to' not in msg.keys() :
+                    
                         if msg['text'].lower().startswith('catcar, '):
                             message = msg['text'].lower()[len('catcar, '):]
 
@@ -114,8 +115,20 @@ if sc.rtm_connect():
                             elif "make me a sandwich" in msg['text'].lower():
                                 sc.rtm_send_message(str(msg[u'channel']), "how about you go fuck off")
                         else:
-                            if "define:" in msg['text'].lower():
+                            message = msg['text'].lower()
+                            if "define:" in message:
                                 defineWord(msg['text'].lower(), str(msg[u'channel']), len('define:'))
+
+                            #if "hello" in msg['text'].lower() or "hey" in msg['text'].lower() or "hi there!" in msg['text'].lower():
+                            #    hi_count += 1
+                            #    if hi_count < 30: 
+                            #        sc.rtm_send_message(str(msg[u'channel']), "hi")
+                            #    else: 
+                            #        sc.rtm_send_message(str(msg[u'channel']), "go fuck yourself")
+                            #        hi_count = 0
+
+                            if "Ok." in message:
+                                sc.rtm_send_message(str(msg[u'channel']), "kthx, sero is cool")
 
                 print "TEXT:" + str(newMsgs)
             
