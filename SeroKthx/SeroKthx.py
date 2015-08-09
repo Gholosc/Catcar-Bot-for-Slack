@@ -5,6 +5,8 @@ import requests
 from slackclient import SlackClient
 from xml.etree import ElementTree 
 
+import openweathermap as Weather
+
 TOKEN = open("token.txt", "r").readline().strip()
 DictApiKey = open("dictapikey.txt", "r").readline().strip()
 EnglishDictURL = 'http://www.dictionaryapi.com/api/v1/references/collegiate/xml/{0}?key={1}'
@@ -12,6 +14,9 @@ XmlTagsRmv = ['<aq>', '</aq>', '<ca>', '</ca>', '<cat>', '</cat>', '<dx>', '</dx
               '<dxt>', '</dxt>', '<g>', '</g>', '<it>', '</it>', '<sx>', '</sx>', '<sxn>', '</sxn>', 
               '<un>', '</un>', '<ri>', '</ri>', '<va>', '</va>', '<vi>', '</vi>', '<vr>', '</vr>', 
               '<vl>', '</vl>', '<fw>', '</fw>', '<d_link>', '</d_link>']
+
+
+# Merriam-Webster Dictionary Fetch
 
 def terribleXMLParsing(xmlDef):
     ''' Stop using XML if JSON is better suited to the purpose PLEASE.
@@ -72,6 +77,8 @@ def getDictDefnResponse(word, isAll=False):
         formatted = "\nCould not find definition :tumbleweed:" 
     return title + formatted
 
+# END: Dictionary
+
 def defineWord(message, channel, prefixLength, isAll=False):
     try: 
         word = str(message)[prefixLength:].strip()
@@ -82,6 +89,21 @@ def defineWord(message, channel, prefixLength, isAll=False):
         sc.rtm_send_message(channel, defn)
     except: 
         sc.rtm_send_message(channel, "Problem finding definition. \n")
+
+WTHR_RSP = \
+"*Weather for {}, {}:*\n" + \
+"\n*Description*\n{}\n " + \
+"\n*Temperature* \nCurrent: {}            Low: {}            High: {}"
+def getWeather(channel, location):
+    weather = Weather.GetWeather(location)
+    resp = ''
+    if weather:
+        resp = WTHR_RSP.format(weather['city'], weather['country'],
+                               weather['desc_second'], weather['temp_curr'], 
+                               weather['temp_low'], weather['temp_high'])
+    else:
+        resp = 'Error finding weather for {0}'.format(location)
+    sc.rtm_send_message(channel, resp)
 
 sc = SlackClient(TOKEN)
 if sc.rtm_connect():
@@ -95,40 +117,37 @@ if sc.rtm_connect():
             newMsgs = [new for new in feed if u'text' in new]
             if newMsgs != []:
                 for msg in newMsgs:
-                    
                         if msg['text'].lower().startswith('catcar, '):
                             message = msg['text'].lower()[len('catcar, '):]
 
+                            # Long definition
                             if "definefull:" in message:
                                 defineWord(message, str(msg[u'channel']), len('definefull:'), isAll=True)
                             if "definefull" in msg['text'].lower():
                                 defineWord(message, str(msg[u'channel']), len('definefull'), isAll=True)
 
+                            # Short definition
                             elif "define:" in message:
                                 defineWord(message, str(msg[u'channel']), len('define:'))
                             elif "define" in msg['text'].lower():
                                 defineWord(message, str(msg[u'channel']), len('define'))
 
-                            elif "sero" in msg['text'].lower():
-                                sc.rtm_send_message(str(msg[u'channel']), "IS AWESOME")
+                            # Coming Soon: Weather
+                            elif "weather in " in message:
+                                weatherLoc = message[len('weather in '):]
+                                getWeather(msg[u'channel'], weatherLoc)
 
+                            # Other
                             elif "make me a sandwich" in msg['text'].lower():
                                 sc.rtm_send_message(str(msg[u'channel']), "how about you go fuck off")
+
+                            elif "sero" in message:
+                                sc.rtm_send_message(str(msg[u'channel']), "IS AWESOME")
+
                         else:
                             message = msg['text'].lower()
                             if "define:" in message:
-                                defineWord(msg['text'].lower(), str(msg[u'channel']), len('define:'))
-
-                            #if "hello" in msg['text'].lower() or "hey" in msg['text'].lower() or "hi there!" in msg['text'].lower():
-                            #    hi_count += 1
-                            #    if hi_count < 30: 
-                            #        sc.rtm_send_message(str(msg[u'channel']), "hi")
-                            #    else: 
-                            #        sc.rtm_send_message(str(msg[u'channel']), "go fuck yourself")
-                            #        hi_count = 0
-
-                            if "Ok." in message:
-                                sc.rtm_send_message(str(msg[u'channel']), "kthx, sero is cool")
+                                defineWord(message, str(msg[u'channel']), len('define:'))
 
                 print "TEXT:" + str(newMsgs)
             
