@@ -6,86 +6,20 @@ from slackclient import SlackClient
 from xml.etree import ElementTree 
 
 import openweathermap as Weather
+import dictapi as Dictionary
 
 TOKEN = open("token.txt", "r").readline().strip()
-DictApiKey = open("dictapikey.txt", "r").readline().strip()
-EnglishDictURL = 'http://www.dictionaryapi.com/api/v1/references/collegiate/xml/{0}?key={1}'
-XmlTagsRmv = ['<aq>', '</aq>', '<ca>', '</ca>', '<cat>', '</cat>', '<dx>', '</dx>', '<dxn>', '</dxn>',
-              '<dxt>', '</dxt>', '<g>', '</g>', '<it>', '</it>', '<sx>', '</sx>', '<sxn>', '</sxn>', 
-              '<un>', '</un>', '<ri>', '</ri>', '<va>', '</va>', '<vi>', '</vi>', '<vr>', '</vr>', 
-              '<vl>', '</vl>', '<fw>', '</fw>', '<d_link>', '</d_link>']
 
-
-# Merriam-Webster Dictionary Fetch
-
-def terribleXMLParsing(xmlDef):
-    ''' Stop using XML if JSON is better suited to the purpose PLEASE.
-        Hardcoded for use with dictionaryapi '''
-    xml = xmlDef
-    defns = []
-    while xml.find('<dt>') != -1:
-       indivDefn = xml[xml.find('<dt>')+4 : xml.find('</dt>')].strip(' :')
-       defns.append(indivDefn)
-       xml = xml[xml.find('</dt>')+5:]
-    return defns
-
-def isolateSingleEntry(xml):
-    ''' Meriam-Webster API provides several suggests within seperate <entry id="foo"> tags.
-    Just get the first one. '''
-    isolated =  xml[xml.find('<entry') : xml.find('</entry>')]
-    print "ISOLATED: " + isolated
-    return isolated
-
-def format(defnList, isAll=False):
-    lis = defnList
-    finalStr = ''
-    if isAll:
-        count = 0
-        for defn in lis:
-            count += 1 
-            defn = defn.strip()
-            defn = defn[0].upper() + defn[1:]
-            finalStr += '\n{0}) {1}'.format(count, defn)
-    else:
-        lis = lis[:4]
-        count = 0
-        for defn in lis:
-            count += 1
-            defn = defn.strip()
-            defn = defn[0].upper() + defn[1:]
-            finalStr += '\n{0}) {1}'.format(count, defn)
-    return finalStr
-
-def getDictDefnResponse(word, isAll=False):
-    title = '*Dictionary definition(s) for \'' + word[0].upper() + word[1:].lower() + '\':*' 
-
-    rsp = requests.get(EnglishDictURL.format(word, DictApiKey)).content
-    rsp = isolateSingleEntry(rsp)
-    
-    hasMultipleEntries = rsp.find('<sn>') != -1
-    if hasMultipleEntries: 
-        definition = rsp[rsp.find('<sn>') : rsp.rfind('</dt>') + 5]
-    else:
-        definition = rsp[rsp.find('<dt>') : rsp.rfind('</dt>') + 5]
-
-    for tag in XmlTagsRmv: definition = definition.replace(tag, '')
-    definition = definition.replace(' :', ' -- ')
-
-    defnList = terribleXMLParsing(definition)
-    formatted = format(defnList, isAll)
-    if formatted.strip() == '':
-        formatted = "\nCould not find definition :tumbleweed:" 
-    return title + formatted
-
-# END: Dictionary
-
+DEFN_RSP = \
+"{}\n\n" +\
+"_Definitions were fetched using the API for the Merriam-Webster\'s Collegiate Dictionary_ " +\
+"http://goo.gl/J9BwCd"
 def defineWord(message, channel, prefixLength, isAll=False):
     try: 
         word = str(message)[prefixLength:].strip()
-        defn = getDictDefnResponse(word, isAll)
-
-        defn += '\n\n_Definitions were fetched using the API for the Merriam-Webster\'s Collegiate Dictionary_ '
-        defn += 'http://goo.gl/J9BwCd'
+        defn = DEFN_RSP.format(Dictionary.GetDictionaryDefnResponse(word, isAll))
+        if not defn:
+            raise Exception
         sc.rtm_send_message(channel, defn)
     except: 
         sc.rtm_send_message(channel, "Problem finding definition. \n")
@@ -132,7 +66,7 @@ if sc.rtm_connect():
                             elif "define" in msg['text'].lower():
                                 defineWord(message, str(msg[u'channel']), len('define'))
 
-                            # Coming Soon: Weather
+                            # Weather
                             elif "weather in " in message:
                                 weatherLoc = message[len('weather in '):]
                                 getWeather(msg[u'channel'], weatherLoc)
